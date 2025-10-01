@@ -62,21 +62,21 @@ It:
 - Shuts down instance after 20 minutes
 
 ⚡ Before using, update:
-```bash
+**Paramaters:**
+
 GH_OWNER="your-github-username"
 GH_REPO="your-repo-name"
 REGION="your-aws-region"
 SSM_PARAM_NAME="/github/selfhosted/pat"
-
 4️⃣ Store GitHub Token in SSM
+bash
+Copy code
 aws ssm put-parameter \
   --name "/github/selfhosted/pat" \
   --value "your-github-pat-token" \
   --type SecureString \
   --region us-east-1
-
 5️⃣ Auto Scaling Group (ASG)
-
 Create ASG using launch template
 
 Example capacity:
@@ -87,23 +87,22 @@ Desired: 0
 
 Max: 3
 
-Lambda will update ASG capacity based on webhook events.
+👉 Lambda will update ASG capacity based on webhook events.
 
 6️⃣ Lambda Function
-
 Code: lambda_function.py
 
-Environment Variables (Lambda Console):
+Environment Variables (in Lambda Console):
 
-ASG_NAME = github-runner-asg
-WEBHOOK_SECRET = your_webhook_secret
-GH_OWNER = your-github-username
-GH_REPO = your-repo-name
-SSM_PARAM_NAME = /github/selfhosted/pat
-REGION = us-east-1
-
+bash
+Copy code
+ASG_NAME=github-runner-asg
+WEBHOOK_SECRET=your_webhook_secret
+GH_OWNER=your-github-username
+GH_REPO=your-repo-name
+SSM_PARAM_NAME=/github/selfhosted/pat
+REGION=us-east-1
 7️⃣ API Gateway
-
 Create HTTP API
 
 Integration: Lambda function
@@ -115,7 +114,6 @@ Deploy stage: dev
 Copy Invoke URL
 
 8️⃣ GitHub Webhook
-
 Repo → Settings → Webhooks → Add Webhook
 
 Payload URL: API Gateway Invoke URL
@@ -127,7 +125,6 @@ Secret: same as WEBHOOK_SECRET
 Events: Push (or customize)
 
 9️⃣ Full Workflow
-
 Push code → GitHub workflow triggers
 
 API Gateway → Lambda → ASG → EC2
@@ -136,10 +133,9 @@ EC2 runner executes job
 
 Instance terminates after completion
 
-✅ Zero idle cost, fully automated
+✅ Zero idle cost, fully automated 🚀
 
 📊 Benefits
-
 ⚡ On-demand scaling
 
 💰 70–80% CI/CD cost savings
@@ -149,7 +145,6 @@ Instance terminates after completion
 🔄 Automated cleanup of idle instances
 
 🧩 Resources
-
 GitHub Actions Self-Hosted Runners
 
 AWS Auto Scaling
@@ -157,6 +152,6 @@ AWS Auto Scaling
 AWS Lambda
 
 🙌 Outro
-
 This setup ensures scalable workflows, zero idle costs, and optimized CI/CD infrastructure.
+
 ⭐ Don’t forget to check out the full video tutorial and drop a ⭐ on this repo if it helped you!
