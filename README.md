@@ -1,175 +1,158 @@
-🚀 On-Demand GitHub Self-Hosted Runners with AWS 
+🚀 On-Demand GitHub Self-Hosted Runners with AWS
 
-This repository contains the infrastructure and scripts to build a fully automated, on-demand GitHub self-hosted runner system using AWS Lambda, API Gateway, Auto Scaling Group, Launch Templates, and EC2. 
+This repository contains the infrastructure and scripts to build a fully automated, on-demand GitHub self-hosted runner system using AWS Lambda, API Gateway, Auto Scaling Group, Launch Templates, and EC2.
 
-Whenever a GitHub workflow job is triggered, it scales up an EC2 instance dynamically, registers it as a self-hosted runner, executes the job, and then terminates the instance to save cost. 
+Whenever a GitHub workflow job is triggered, it scales up an EC2 instance dynamically, registers it as a self-hosted runner, executes the job, and then terminates the instance to save cost.
 
-This approach helps achieve up to 70–80% cost savings compared to always-on runners. 
+👉 This approach helps achieve up to 70–80% cost savings compared to always-on runners.
 
- 
+📺 Video Walkthrough
 
-📺 Video Walkthrough 
+🎥 Full tutorial is available on my channel: SkyOpsTech
 
-🎥 Full tutorial is available on my channel: https://www.youtube.com/@SkyOpsTech 
-
- 
-
-⚙️ Architecture Flow 
-
+⚙️ Architecture Flow
 Developer pushes code → triggers GitHub Actions workflow  
-
 Webhook → API Gateway → Lambda function  
-
 Lambda updates Auto Scaling Group (ASG) → launches EC2 instance  
-
 EC2 runs userdata.sh → installs & registers GitHub runner  
+Runner executes job → shuts down after completion  
 
-Runner executes job → shuts down after completion 
+📂 Repository Structure
+├── userdata.sh          # EC2 User Data script (GitHub runner setup)  
+├── lambda_function.py   # Lambda scaling function (API Gateway handler)  
+└── README.md            # Documentation  
 
- 
+🛠️ Setup Instructions
+1️⃣ Launch Template
 
-📂 Repository Structure 
+AMI: Ubuntu (latest LTS)
 
-├── userdata.sh # EC2 User Data script (GitHub runner setup) ├── lambda_function.py # Lambda scaling function (API Gateway handler) └── README.md # Documentation 
+Instance type: t2.micro (or higher for heavy workloads)
 
-yaml Copy code 
+Security group: allow ports 22 (SSH), 80 (HTTP), 443 (HTTPS)
 
- 
+IAM role: Attach AmazonSSMManagedInstanceCore
 
-🛠️ Setup Instructions 
+User Data: Add userdata.sh script
 
-1️⃣ Launch Template 
+2️⃣ IAM Roles
 
-AMI: Ubuntu (latest LTS)  
+EC2 Role → AmazonSSMManagedInstanceCore
 
-Instance type: t2.micro (or higher for heavy workloads)  
+Lambda Role → attach policies:
 
-Security group: allow ports 22 (SSH), 80 (HTTP), 443 (HTTPS)  
+AmazonSSMFullAccess
 
-IAM role: Attach AmazonSSMManagedInstanceCore  
+AutoScalingFullAccess
 
-User Data: Add userdata.sh script 
+AWSLambda_FullAccess
 
- 
+3️⃣ User Data Script
 
-2️⃣ IAM Roles 
+Located in userdata.sh.
 
-EC2 Role → AmazonSSMManagedInstanceCore  
+It will:
 
-Lambda Role → attach policies:  
+Install dependencies
 
-AmazonSSMFullAccess  
+Fetch GitHub PAT from SSM Parameter Store
 
-AutoScalingFullAccess  
+Register EC2 instance as GitHub self-hosted runner
 
-AWSLambda_FullAccess 
+Start runner service
 
- 
+Shut down instance after 20 minutes
 
-3️⃣ User Data Script 
+⚡ Before Using – Update Parameters
+GH_OWNER="your-github-username"  
+GH_REPO="your-repo-name"  
+REGION="your-aws-region"  
+SSM_PARAM_NAME="/github/selfhosted/pat"
 
-Located in userdata.sh.  
+4️⃣ Store GitHub Token in SSM
+aws ssm put-parameter \
+--name "/github/selfhosted/pat" \
+--value "your-github-pat-token" \
+--type SecureString \
+--region us-east-1
 
-It will:  
+5️⃣ Auto Scaling Group (ASG)
 
-Install dependencies  
+Create ASG using launch template. Example capacity:
 
-Fetch GitHub PAT from SSM Parameter Store  
+Min: 0  
+Desired: 0  
+Max: 3  
 
-Register EC2 instance as GitHub self-hosted runner  
 
-Start runner service  
+👉 Lambda will update ASG capacity based on webhook events.
 
-Shut down instance after 20 minutes 
+6️⃣ Lambda Function
 
- 
+Code: lambda_function.py
 
-⚡ Before Using – Update Parameters 
+Environment Variables (set in Lambda Console):
 
-GH_OWNER="your-github-username" GH_REPO="your-repo-name" REGION="your-aws-region" SSM_PARAM_NAME="/github/selfhosted/pat" 
-
-4️⃣ Store GitHub Token in SSM 
-
-Copy code aws ssm put-parameter  
-
---name "/github/selfhosted/pat"  
-
---value "your-github-pat-token"  
-
---type SecureString  
-
---region us-east-1 
- 
-
-5️⃣ Auto Scaling Group (ASG) Create ASG using launch template 
-
-Example capacity: 
-
-Min: 0 
-
-Desired: 0 
-
-Max: 3 
-
-👉 Lambda will update ASG capacity based on webhook events. 
-
-6️⃣ Lambda Function Code: lambda_function.pylamda_function.py.  
-
-Environment Variables (set in Lambda Console): 
-
- Copy code ASG_NAME=github-runner-asg  
-
+ASG_NAME=github-runner-asg  
 WEBHOOK_SECRET=your_webhook_secret  
+GH_OWNER=your-github-username  
+GH_REPO=your-repo-name  
+SSM_PARAM_NAME=/github/selfhosted/pat  
+REGION=us-east-1
 
-GH_OWNER=your-github-username GH_REPO=your-repo-name SSM_PARAM_NAME=/github/selfhosted/pat 
+7️⃣ API Gateway
 
- REGION=us-east-1 
+Create HTTP API
 
-7️⃣ API Gateway Create HTTP API 
+Integration: Lambda function
 
-Integration: Lambda function 
+Route: POST /webhook
 
-Route: POST /webhook 
+Deploy stage: dev
 
-Deploy stage: dev 
+Copy Invoke URL
 
-Copy Invoke URL 
- 
+8️⃣ GitHub Webhook
 
-8️⃣ GitHub Webhook Go to Repo → Settings → Webhooks → Add Webhook 
+Go to Repo → Settings → Webhooks → Add Webhook
 
-Payload URL: API Gateway Invoke URL 
+Payload URL: API Gateway Invoke URL
 
-Content type: application/json 
+Content type: application/json
 
-Secret: same as WEBHOOK_SECRET 
+Secret: same as WEBHOOK_SECRET
 
-Events: Push (or customize) 
+Events: Push (or customize)
 
-9️⃣ Full Workflow Push code → GitHub workflow triggers 
+9️⃣ Full Workflow
+Push code → GitHub workflow triggers  
+API Gateway → Lambda → ASG → EC2  
+EC2 runner executes job  
+Instance terminates after completion  
 
-API Gateway → Lambda → ASG → EC2 
 
-EC2 runner executes job 
+✅ Zero idle cost, fully automated 🚀
 
-Instance terminates after completion 
+📊 Benefits
 
-✅ Zero idle cost, fully automated 🚀 
+⚡ On-demand scaling
 
-📊 Benefits ⚡ On-demand scaling 
+💰 70–80% CI/CD cost savings
 
-💰 70–80% CI/CD cost savings 
+🔒 Secure GitHub token handling (via SSM)
 
-🔒 Secure GitHub token handling (via SSM) 
+🔄 Automated cleanup of idle instances
 
-🔄 Automated cleanup of idle instances 
+🧩 Resources
 
-🧩 Resources GitHub Actions Self-Hosted Runners 
+GitHub Actions Self-Hosted Runners
 
-AWS Auto Scaling AWS Lambda 
+AWS Auto Scaling
 
-🙌 Outro This setup ensures scalable workflows, zero idle costs, and optimized CI/CD infrastructure. 
+AWS Lambda
 
-⭐ Don’t forget to check out the full video tutorial and drop a ⭐ on this repo if it helped you! 
+🙌 Outro
 
- 
+This setup ensures scalable workflows, zero idle costs, and optimized CI/CD infrastructure.
+
+⭐ Don’t forget to check out the full video tutorial and drop a ⭐ on this repo if it helped you!
